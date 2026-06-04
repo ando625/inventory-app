@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+
+  # ─── ① C# バックエンド ───────────────────────────────
+  backend:
+    build:
+      context: ./backend          # ./backend/ フォルダをビルドの起点にする
+      dockerfile: Dockerfile.dev  # 開発用Dockerfileを使う
+    ports:
+      - "5001:8080"           # ホスト:5001 → コンテナ:8080
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      # ↑ 「開発モードで動かしてね」という指示（Laravelの APP_ENV=local と同じ）
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=inventory;Username=postgres;Password=postgres
+      # ↑ DBへの接続文字列。__（アンダースコア2つ）がLaravelの . (ドット) に相当
+    volumes:
+      - ./backend:/app    # 手元のコード変更をコンテナにリアルタイム同期
+    command: dotnet watch run --urls=http://+:8080 --project InventoryApi.csproj
+    # ↑ コンテナ起動時に自動でC#をビルド＆実行する命令
+    # ↑ --project InventoryApi.csproj = どのプロジェクトか明示（将来ファイルが増えても安全）
+    depends_on:
+      db:
+        condition: service_healthy   # DBが「健康」になってから起動する
+    healthcheck:              # C#が起動完了したか確認する機能
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      # ↑ curl → wget に変更（.NETの公式イメージにcurlが入っていないため）
+      interval: 10s
+      timeout: 5s
+      retries: 10           # dotnet watch は起動が遅いので多めに
+      start_period: 30s     # 最初の30秒はチェックしない猶予時間
+    networks:
+      - app-network
+
+  # ─── ② Next.js フロントエンド ─────────────────────────
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5001
+      # ↑ ブラウザからバックエンドを叩くURL（NEXT_PUBLIC_ が必須プレフィックス）
+      - WATCHPACK_POLLING=true
+      # ↑ Docker内でNext.jsの自動画面更新を確実に効かせるお守り
+    volumes:
+      - ./frontend:/app                    # 手元の画面コードの変更をリアルタイム同期
+      - /app/node_modules                  # PC側のnode_modulesでコンテナ側を上書きしないための防護策
+      - /app/.next                         # ビルドキャッシュも保護しておくと速い
+    depends_on:
+      backend:
+        condition: service_healthy         # C#の準備が整ってからNext.jsを起動する
+    networks:
+      - app-network
+
+  # ─── ③ PostgreSQL データベース ──────────────────────────
+  db:
+    image: postgres:15        # 公式イメージをそのまま使う（Dockerfileは不要）
+    environment:
+      POSTGRES_DB: inventory
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # ↑ コンテナを止めてもデータが消えないように「名前付きボリューム」に保存
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      # ↑ 「PostgreSQLが準備できたか確認するコマンド」
+      interval: 5s    # 5秒ごとに確認
+      timeout: 5s     # 5秒待って応答なければ失敗
+      retries: 5      # 5回失敗したらエラー
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:    # 名前付きボリュームの定義
+
+networks:
+  app-network:      # コンテナ同士が通信できる内部ネットワーク
+    driver: bridge
