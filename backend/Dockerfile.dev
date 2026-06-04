@@ -1,0 +1,34 @@
+# Dockerfile.dev（開発専用）
+# 本番用Dockerfileとの違い：SDKイメージを使う＋dotnet watchが使える
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+# ↑ SDK = 「コードを書いてコンパイルする道具が全部入った環境」
+#   Laravelでいう「PHP + Composer + artisan が全部使える環境」
+#   本番は aspnet（実行だけ）、開発は sdk（ビルドも実行も）と使い分ける
+
+WORKDIR /app
+# ↑ コンテナ内の作業場所を /app にする
+#   docker-compose.yml の volumes: ./backend:/app と必ず合わせること！
+#   ここがズレると「ファイルが見つからない」エラーになる
+
+COPY InventoryApi.csproj ./
+# ↑ まずプロジェクト定義ファイルだけコピー
+#   なぜソースコード全部じゃないの？→ 次の dotnet restore をキャッシュするため
+#   .csprojが変わらない限り毎回ライブラリをダウンロードしなくて済む（速くなる）
+
+RUN dotnet restore
+# ↑ NuGetパッケージ（ライブラリ）をダウンロード
+#   npm install / composer install と全く同じ意味
+
+COPY . .
+# ↑ 残りのソースコードを全部コピー
+#   volumes でリアルタイム同期するので実質上書きされるが
+#   初回ビルド時のために一応コピーしておく
+
+EXPOSE 8080
+# ↑ 「このコンテナは8080番ポートを使いますよ」という宣言
+#   docker-compose.yml の 5001:8080 の右側の数字と合わせる
+
+# CMD は書かない！
+# ↑ docker-compose.yml の command: dotnet watch run ... で起動するから
+#   Dockerfileに書くと競合するので書かない
