@@ -1,0 +1,44 @@
+<!-- InventoryApi.csproj -->
+<!-- 使うライブラリと.NETのバージョンを定義するファイル -->
+<!-- composer.json や package.json と全く同じ役割 -->
+<!-- 日本          →  InventoryApi    （国 = プロジェクト全体）
+      愛知県      →  Data            （都道府県 = フォルダ）
+      名古屋市  →  AppDbContext    （市 = クラス名） -->
+
+<Project Sdk="Microsoft.NET.Sdk.Web">
+<!-- ↑ 「これはWebアプリですよ」という宣言 -->
+<!--   Sdk.Web = HTTPリクエストを受け取る機能が自動で使えるようになる -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <!-- ↑ .NET 8 を使う（PHPのバージョン指定と同じ） -->
+
+    <Nullable>enable</Nullable>
+    <!-- ↑ null安全をON -->
+    <!-- null = 「何もない・空っぽ」のこと -->
+    <!-- enableにすると「nullかもしれない変数」を使うとき警告が出る -->
+    <!-- バグを早期発見できる！ -->
+
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- ↑ よく使う using（PHPのuse・importと同じ）を自動で読み込む -->
+    <!-- System, System.Collections.Generic など毎回書かなくて良くなる -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ↑ 使うライブラリ一覧（composer.jsonの "require" と同じ） -->
+
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0" />
+    <!-- ↑ Entity Framework Core = LaravelのEloquent ORM に相当 -->
+    <!--   DBのテーブルをC#のクラスとして操作できるようにするライブラリ -->
+
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
+    <!-- ↑ PostgreSQL用のドライバー -->
+    <!--   MySQLならMySql.EntityFrameworkCore を使う -->
+
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <!-- ↑ Swagger = APIのドキュメントを自動生成するツール -->
+    <!--   /swagger にアクセスするとAPIの一覧・テストができる画面が出る -->
+    <!--   開発中にPostmanの代わりに使える超便利ツール！ -->
+  </ItemGroup>
+
+</Project>
