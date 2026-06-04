@@ -1,3 +1,6 @@
+// app/page.tsx
+// 在庫管理アプリのトップページ（一覧・追加・削除）
+
 "use client";
 // ↑ 「このファイルはブラウザで動かす」という宣言
 //   Next.jsはデフォルトでサーバー側で動く
@@ -36,8 +39,8 @@ export default function Home() {
 
   const [form, setForm] = useState({
     name: "",
-    quantity: null as number | null,
-    price: null as number | null,
+    quantity: null,
+    price: null,
     category: "",
   });
   // ↑ フォームの入力値を管理するState
@@ -58,6 +61,11 @@ export default function Home() {
   // ↑ 編集中の一時的なデータを保存する
   //   Partial<Item> = 「Itemの全プロパティが省略可能」という型
 
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  // ↑ 今どのカテゴリを選んでいるか
+  //   null = 「全て」を選んでいる状態
+  //   "食品" = 「食品」ボタンを押している状態
+
   // ── データ取得（GET /api/items）────────────────
   const fetchItems = async () => {
     // ↑ async = 「この関数は非同期処理を含む」という宣言
@@ -72,7 +80,7 @@ export default function Home() {
       //   失敗したら Error を投げる（PHPの throw new Exception と同じ）
 
       const data: Item[] = await res.json();
-      // ↑ レスポンスのJSON文字列をJavaScriptオブジェクトに変換
+      // ↑ レスンポンスのJSON文字列をJavaScriptオブジェクトに変換
       //   : Item[] = 「Item型の配列として扱う」という型指定
 
       setItems(data);
@@ -175,7 +183,7 @@ export default function Home() {
     try {
       const res = await fetch(`${API_URL}/api/items/${item.id}`, {
         method: "PUT",
-        // ↑ PUTメソッド = 更新（CRUDのUpdate）
+        // ↑ PUTメソッド = 更新（CRUD의 Update）
         //   LaravelのRoute::put()と同じ
 
         headers: { "Content-Type": "application/json" },
@@ -216,6 +224,34 @@ export default function Home() {
       alert("削除に失敗しました");
     }
   };
+
+  // ── カテゴリ一覧を自動生成 ────────────────────────
+  const categories = Array.from(
+    new Set(items.map((item) => item.category).filter(Boolean)),
+  );
+  // ↑ 順番に読むと：
+  //   items.map((item) => item.category)
+  //   → ["食品", "電子機器", "食品", "文具"] のように全カテゴリを取り出す
+  //
+  //   .filter(Boolean)
+  //   → 空文字やnullを除外する（カテゴリ未入力のものを無視）
+  //
+  //   new Set(...)
+  //   → Set = 重複を自動で消してくれるデータ構造
+  //   → ["食品", "電子機器", "食品"] → ["食品", "電子機器"] になる
+  //
+  //   Array.from(...)
+  //   → SetをただのArrayに戻す（mapやfilterが使えるようにするため）
+  //
+  //   結果：["食品", "電子機器", "文具"] のような重複なし配列
+
+  // ── 表示するアイテムをフィルタリング ──────────────
+  const filteredItems = selectedCategory
+    ? items.filter((item) => item.category === selectedCategory)
+    : items;
+  // ↑ selectedCategory が null（全て）なら items をそのまま使う
+  //   selectedCategory が "食品" なら food だけに絞る
+  //   PHPの array_filter($items, fn($i) => $i->category === $selected) と同じ
 
   // ── 画面の描画 ────────────────────────────────
   return (
@@ -290,6 +326,46 @@ export default function Home() {
       {error && <p className="text-red-500">{error}</p>}
       {/* ↑ error が空文字以外のときだけ表示 */}
 
+      {/* ── カテゴリフィルターボタン ── */}
+      {!loading && !error && (
+        <div className="flex gap-2 flex-wrap mb-4">
+          {/* 「全て」ボタン */}
+          <button
+            className={`px-3 py-1 rounded text-sm border ${
+              selectedCategory === null
+                ? "bg-blue-500 text-white border-blue-500"
+                : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+            }`}
+            // ↑ selectedCategory が null（全て選択中）なら青く、それ以外は白に
+            //   テンプレートリテラル（バッククォート）の中で条件分岐している
+            onClick={() => setSelectedCategory(null)}
+            // ↑ 押したら selectedCategory を null にリセット → 全件表示
+          >
+            全て（{items.length}）{/* ↑ 全件数を表示 */}
+          </button>
+
+          {/* カテゴリボタンを自動生成 */}
+          {categories.map((category) => (
+            <button
+              key={category}
+              // ↑ key は map で必須！重複しないcategoryをkeyにする
+              className={`px-3 py-1 rounded text-sm border ${
+                selectedCategory === category
+                  ? "bg-blue-500 text-white border-blue-500"
+                  : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+              }`}
+              // ↑ このボタンのcategoryが選択中なら青く、それ以外は白
+              onClick={() => setSelectedCategory(category)}
+              // ↑ 押したら selectedCategory をこのカテゴリに更新
+            >
+              {category}（{items.filter((i) => i.category === category).length}
+              ）{/* ↑ カテゴリ名と、そのカテゴリの件数を表示 */}
+              {/* items.filter(...).length = そのカテゴリのアイテム数 */}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── 在庫一覧テーブル ── */}
       {!loading && !error && (
         <table className="w-full border-collapse border border-gray-300">
@@ -304,15 +380,16 @@ export default function Home() {
             </tr>
           </thead>
           <tbody>
-            {items.length === 0 ? (
+            {filteredItems.length === 0 ? (
+              // ↑ items から filteredItems に変更！絞り込んだ結果が0件の時の表示用
               <tr>
                 <td colSpan={6} className="text-center py-4 text-gray-400">
                   データがありません
                 </td>
               </tr>
             ) : (
-              items.map((item) => (
-                // ↑ map = 配列を1つずつ処理して画面を作る（PHPのforeachと同じ）
+              filteredItems.map((item) => (
+                // ↑ items.map から filteredItems.map に変更！選択したカテゴリのデータだけをループ処理する
                 <tr key={item.id} className="hover:bg-gray-50">
                   {/* ↑ key = ReactがどのDOM要素か識別するために必須！ */}
 
