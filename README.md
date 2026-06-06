@@ -10,6 +10,12 @@
 
 画面（Next.js）・サーバー（ASP.NET Core）・データベース（PostgreSQL）の3層構成で作られており、再起動してもデータが消えない本格的な構成になっています。
 
+
+https://github.com/user-attachments/assets/f683c161-deb5-4f2a-a7a5-63c63149085b
+
+
+
+
 ---
 
 ## 開発の背景
