@@ -318,7 +318,7 @@ inventory-app/
 ### 手順1：リポジトリをクローン
 
 ```bash
-git clone <リポジトリURL> inventory-app
+git clone git@github.com:ando625/inventory-app.git
 cd inventory-app
 ```
 
